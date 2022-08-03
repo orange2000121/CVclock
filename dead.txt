@@ -16,3 +16,26 @@ else:
         for i in range(len(lines_sort)-1):
             if lines_sort[i][0] - lines_sort[i+1][0] > 2:
                 dividing_idx.append(i)
+
+# ---------------------------------- 判斷現在園內 ---------------------------------- #
+if linesP is not None:
+        for i in range(0, len(linesP)):
+            line = linesP[i][0]
+            if circles is not None:
+                # line in circle
+                for circle in circles[0, :]:
+                    p1tocirclelength = math.sqrt(
+                        (line[0] - circle[0])**2 + (line[1] - circle[1])**2)  # p1到圓心距離
+                    p2tocirclelength = math.sqrt(
+                        (line[2] - circle[0])**2 + (line[3] - circle[1])**2)  # p2到圓心距離
+                    if (p1tocirclelength < circle[2]) and (p2tocirclelength < circle[2]+5):#判斷在園內
+                        if(p1tocirclelength < 20 ):#判斷在圓心
+                            linesincircle.append(line)
+                            break
+                        elif(p2tocirclelength < 20):
+                            #change p1 and p2
+                            p1temp =[line[0],line[1]]
+                            line[0],line[1] = line[2],line[3]
+                            line[2],line[3] = p1temp[0],p1temp[1]
+                            linesincircle.append(line)
+                            break

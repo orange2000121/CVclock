@@ -25,7 +25,7 @@ def findLines(img):
     cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
     cdstP = np.copy(cdst)
 
-    lines = cv2.HoughLines(dst, 1, np.pi / 180, 150, None, 0, 0)
+    lines = cv2.HoughLines(dst, 1, np.pi / 180, 50, None, 0, 0)
 
     if lines is not None:
         for i in range(0, len(lines)):
@@ -50,6 +50,15 @@ def findLines(img):
 
     return img, linesP
 
+def findClock(img,clock_cascade):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    clock = clock_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30),flags=cv2.CASCADE_SCALE_IMAGE)
+    # faces = clock_cascade.detectMultiScale(gray)
+    print('Detected ', len(clock), " clocks")
+
+    # for (x, y, w, h) in clock:
+    #     img = cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+    return img, clock
 
 def drawCircle(img, circles):
     if circles is not None:
@@ -68,38 +77,42 @@ def drawLine(frame, lines):
 
 
 def showCircleAndLine(frame):
-    circles = findCircle(frame)
-    frame, linesP = findLines(frame)
+    # circles = findCircle(frame)
+    clock_cascade = cv2.CascadeClassifier('cascade/cascade2/cascade.xml')
+    frame,clocks = findClock(frame,clock_cascade)
     linesincircle = []
     # --------------------------------- 判斷線是否在圓圈內 -------------------------------- #
-    if linesP is not None:
-        for i in range(0, len(linesP)):
-            line = linesP[i][0]
-            if circles is not None:
-                # line in circle
-                for circle in circles[0, :]:
-                    p1tocirclelength = math.sqrt(
-                        (line[0] - circle[0])**2 + (line[1] - circle[1])**2)  # p1到圓心距離
-                    p2tocirclelength = math.sqrt(
-                        (line[2] - circle[0])**2 + (line[3] - circle[1])**2)  # p2到圓心距離
-                    if (p1tocirclelength < circle[2]) and (p2tocirclelength < circle[2]+5):#判斷在園內
-                        if(p1tocirclelength < 20 ):#判斷在圓心
-                            linesincircle.append(line)
-                            break
-                        elif(p2tocirclelength < 20):
-                            #change p1 and p2
-                            p1temp =[line[0],line[1]]
-                            line[0],line[1] = line[2],line[3]
-                            line[2],line[3] = p1temp[0],p1temp[1]
-                            linesincircle.append(line)
-                            break
-                
+    for clock in clocks:
+        x, y, w, h = clock[0], clock[1], clock[2], clock[3]
+        print('clock : ',clock)
+        clockimg = frame[y:y+h, x:x+w] # 取得時鐘內的影像
+        frame, linesP = findLines(frame)
+        if linesP is not None:
+            for i in range(0, len(linesP)):
+                line = linesP[i][0]
+                center_x = x + w / 2
+                center_y = y + h / 2
+                p1tocirclelength = math.sqrt((line[0] - center_x)**2 + (line[1] - center_y)**2)  # p1到圓心距離
+                p2tocirclelength = math.sqrt((line[2] - center_x)**2 + (line[3] - center_y)**2)  # p2到圓心距離
+                # linesincircle.append(line)
+                center_redus = w/12 # 圓心半徑
+                frame = cv2.circle(frame, (int(center_x), int(center_y)), int(center_redus), (0, 0, 255), 1)
+                if(p1tocirclelength < center_redus ):#判斷在圓心
+                    linesincircle.append(line)
+                elif(p2tocirclelength < center_redus):
+                    #change p1 and p2
+                    p1temp =[line[0],line[1]]
+                    line[0],line[1] = line[2],line[3]
+                    line[2],line[3] = p1temp[0],p1temp[1]
+                    linesincircle.append(line)
+        else:
+            print('no lines')
             
-    for line in linesincircle:
-        print(line)
-    findHourMinSec(linesincircle,frame)
+    # for line in linesincircle:
+    #     print('line : ',line)
+    h, m, s = findHourMinSec(linesincircle,frame)
+    frame = cv2.putText(frame,f'{h}:{m}:{s}',(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
     frame = drawLine(frame, linesincircle)
-    frame = drawCircle(frame, circles)
     # 顯示圖片
     cv2.imshow('frame', frame)
 
@@ -136,9 +149,9 @@ def findHourMinSec(lines,frame):
             elif dif > difs[0]:
                 dividing_idx[0] = i
                 difs[0] = dif
-        print(dividing_idx)
+        print('dividing_idx: ',dividing_idx)
         for line in lines_sort:
-            print(line)
+            print('line: ',line)
         # ---------------------------------------------------------------------------- #
         #                                     判斷時分秒                               #
         # ---------------------------------------------------------------------------- #
@@ -180,20 +193,24 @@ def findHourMinSec(lines,frame):
         min_time = int(min_angle/(2*math.pi/60)) % 60
         hour_time = int(hour_angle/(2*math.pi/12)) % 12
         print("時間: %d:%d:%d" % (hour_time, min_time, sec_time))
+        return hour_time, min_time, sec_time
 
 
 def cameraCap():
     # 選擇第二隻攝影機
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1 + cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_SETTINGS,1)
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE,100)
 
     while(True):
-        time.sleep(2)
-        ret, frame = cap.read()  # 從攝影機擷取一張影像
+        time.sleep(1)
+        rt, frame = cap.read()  # 從攝影機擷取一張影像
         try:
             showCircleAndLine(frame)
         except:
             cv2.imshow('frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # 若按下 q 鍵則離開迴圈
+        # press esc to quit
+        if cv2.waitKey(1) & 0xFF == 27:
             break
     cap.release()  # 釋放攝影機
     cv2.destroyAllWindows()  # 關閉所有 OpenCV 視窗
