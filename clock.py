@@ -20,7 +20,8 @@ def findCircle(img):
 
 def findLines(img):
     dst = cv2.Canny(img, 50, 200, None, 3)
-
+    cv2.imshow('dst', dst)
+    cv2.waitKey(0)
     # Copy edges to the images that will display the results in BGR
     cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
     cdstP = np.copy(cdst)
@@ -166,9 +167,6 @@ def findHourMinSec(lines,frame):
         min_tan = -(min_line[1][3] - min_line[1][1]) / (min_line[1][2] - min_line[1][0])
         hour_tan = -(hour_line[1][3] - hour_line[1][1]) / (hour_line[1][2] - hour_line[1][0])
 
-        # sec_angle = math.atan(sec_tan)   # 轉換成時鐘的角度
-        # min_angle = math.atan(min_tan) 
-        # hour_angle = math.atan(hour_tan)
         sec_angle = 2*math.pi - math.atan(sec_tan) + math.pi/2  # 轉換成時鐘的角度
         min_angle = 2*math.pi - math.atan(min_tan) + math.pi/2
         hour_angle = 2*math.pi - math.atan(hour_tan) + math.pi/2
@@ -198,7 +196,7 @@ def findHourMinSec(lines,frame):
 
 def cameraCap():
     # 選擇第二隻攝影機
-    cap = cv2.VideoCapture(1 + cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_SETTINGS,1)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE,100)
 
