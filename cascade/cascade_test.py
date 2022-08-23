@@ -35,5 +35,5 @@ def pictureCap(clock_cascade):
     cascade_test(img,clock_cascade)
     cv2.waitKey(0)
 if __name__ =='__main__':
-    clock_cascade = cv2.CascadeClassifier('cascade2/cascade.xml')
+    clock_cascade = cv2.CascadeClassifier('cascadetest/cascade.xml')
     cameraCap(clock_cascade)
